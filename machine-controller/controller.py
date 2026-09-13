@@ -11,13 +11,32 @@ FAILED = "FAILED"
 MIXED = "MIXED"
 ALWAYS_SUCCESS = "ALWAYS_SUCCESS"
 
+SUPPORTED_ACTIONS = {
+    REDUCE_SPEED,
+    REQUEST_INSPECTION,
+    EMERGENCY_STOP,
+}
+
+SUPPORTED_MODES = {
+    MIXED,
+    ALWAYS_SUCCESS,
+}
+
 
 class MachineController:
     def __init__(
         self,
         mode: str = MIXED,
     ) -> None:
-        self.mode = mode
+        normalized_mode = mode.upper()
+
+        if normalized_mode not in SUPPORTED_MODES:
+            raise ValueError(
+                "Modalita controller non supportata: "
+                f"{normalized_mode}"
+            )
+
+        self.mode = normalized_mode
 
         self.action_counters: dict[str, int] = {
             REDUCE_SPEED: 0,
@@ -29,7 +48,9 @@ class MachineController:
         self,
         command: dict[str, Any],
     ) -> dict[str, Any]:
-        action = command["action"]
+        action = str(
+            command["action"]
+        ).upper()
 
         current_speed = int(
             command["current_speed"]
@@ -39,14 +60,22 @@ class MachineController:
             command["target_speed"]
         )
 
+        execution_number = (
+            self._next_execution_number(action)
+        )
+
+        if action not in SUPPORTED_ACTIONS:
+            return self._create_unsupported_result(
+                action=action,
+                execution_number=execution_number,
+                current_speed=current_speed,
+                target_speed=target_speed,
+            )
+
         self._validate_speed_values(
             action=action,
             current_speed=current_speed,
             target_speed=target_speed,
-        )
-
-        execution_number = (
-            self._next_execution_number(action)
         )
 
         if self._should_fail(
@@ -74,15 +103,7 @@ class MachineController:
                 target_speed=target_speed,
             )
 
-        if action == EMERGENCY_STOP:
-            return self._execute_emergency_stop(
-                execution_number=execution_number,
-                current_speed=current_speed,
-                target_speed=target_speed,
-            )
-
-        return self._create_unsupported_result(
-            action=action,
+        return self._execute_emergency_stop(
             execution_number=execution_number,
             current_speed=current_speed,
             target_speed=target_speed,
@@ -170,9 +191,6 @@ class MachineController:
         if self.mode == ALWAYS_SUCCESS:
             return False
 
-        if self.mode != MIXED:
-            return False
-
         failure_sequences = {
             REDUCE_SPEED: {1},
             REQUEST_INSPECTION: set(),
@@ -228,8 +246,93 @@ class MachineController:
         if (
             action == REQUEST_INSPECTION
             and target_speed != current_speed
-):
+        ):
             raise ValueError(
                 "REQUEST_INSPECTION non deve "
                 "modificare la velocita"
             )
+
+    @staticmethod
+    def _create_success_result(
+        action: str,
+        execution_number: int,
+        message: str,
+        previous_speed: int,
+        target_speed: int,
+        resulting_speed: int,
+        machine_status: str,
+    ) -> dict[str, Any]:
+        return {
+            "result": SUCCESS,
+            "message": message,
+            "failure_reason": None,
+            "failure_code": None,
+            "retryable": False,
+            "execution_number": execution_number,
+            "executed_action": action,
+            "previous_speed": previous_speed,
+            "target_speed": target_speed,
+            "resulting_speed": resulting_speed,
+            "machine_status": machine_status,
+            "state_changed": (
+                resulting_speed != previous_speed
+                or machine_status != "RUNNING"
+            ),
+        }
+
+    @staticmethod
+    def _create_failed_result(
+        action: str,
+        execution_number: int,
+        current_speed: int,
+        target_speed: int,
+    ) -> dict[str, Any]:
+        return {
+            "result": FAILED,
+            "message": (
+                f"Command execution failed: {action}"
+            ),
+            "failure_reason": (
+                "Simulated actuator communication "
+                "failure"
+            ),
+            "failure_code": (
+                "ACTUATOR_COMMUNICATION_FAILURE"
+            ),
+            "retryable": True,
+            "execution_number": execution_number,
+            "executed_action": action,
+            "previous_speed": current_speed,
+            "target_speed": target_speed,
+            "resulting_speed": current_speed,
+            "machine_status": "RUNNING",
+            "state_changed": False,
+        }
+
+    @staticmethod
+    def _create_unsupported_result(
+        action: str,
+        execution_number: int,
+        current_speed: int,
+        target_speed: int,
+    ) -> dict[str, Any]:
+        return {
+            "result": FAILED,
+            "message": (
+                f"Unsupported action: {action}"
+            ),
+            "failure_reason": (
+                "Unsupported command"
+            ),
+            "failure_code": (
+                "UNSUPPORTED_COMMAND"
+            ),
+            "retryable": False,
+            "execution_number": execution_number,
+            "executed_action": action,
+            "previous_speed": current_speed,
+            "target_speed": target_speed,
+            "resulting_speed": current_speed,
+            "machine_status": "UNKNOWN",
+            "state_changed": False,
+        }
