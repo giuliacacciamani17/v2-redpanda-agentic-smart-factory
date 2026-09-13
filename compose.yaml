@@ -1,0 +1,124 @@
+name: redpanda-agentic-smart-factory-v2
+
+services:
+  redpanda:
+    image: redpandadata/redpanda:v26.2.1
+    container_name: redpanda-v2
+    command:
+      - redpanda
+      - start
+      - --mode
+      - dev-container
+      - --smp
+      - "1"
+      - --memory
+      - 1G
+      - --reserve-memory
+      - 0M
+      - --node-id
+      - "0"
+      - --kafka-addr
+      - internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr
+      - internal://redpanda:9092,external://localhost:29092
+      - --rpc-addr
+      - redpanda:33145
+      - --advertise-rpc-addr
+      - redpanda:33145
+    ports:
+      - "29092:19092"
+      - "19644:9644"
+    volumes:
+      - redpanda-data-v2:/var/lib/redpanda/data
+    networks:
+      - factory-network-v2
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - rpk cluster health | grep -q 'Healthy:.*true'
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redpanda-console:
+    image: redpandadata/console:v3.9.0
+    container_name: redpanda-console-v2
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+    ports:
+      - "8081:8080"
+    networks:
+      - factory-network-v2
+
+  machine-simulator:
+    build:
+      context: ./machine-simulator
+    container_name: machine-simulator-v2
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER: redpanda:9092
+      TELEMETRY_TOPIC: factory.telemetry
+      MACHINE_STATE_TOPIC: factory.machine-state
+      MACHINE_ID: machine-01
+      EVENT_INTERVAL_SECONDS: "2"
+      STATE_READ_TIMEOUT_SECONDS: "2"
+      RANDOM_SEED: "42"
+      CORRELATION_PREFIX: abc
+      CORRELATION_START: "123"
+    networks:
+      - factory-network-v2
+    restart: "no"
+
+  maintenance-agent:
+    build:
+      context: ./maintenance-agent
+    container_name: maintenance-agent-v2
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER: redpanda:9092
+      TELEMETRY_TOPIC: factory.telemetry
+      COMMANDS_TOPIC: factory.commands
+      COMMAND_RESULTS_TOPIC: factory.command-results
+      DECISIONS_TOPIC: factory.agent-decisions
+      AGENT_FEEDBACK_TOPIC: factory.agent-feedback
+      CONSUMER_GROUP: maintenance-agent-group-v2
+      AGENT_ID: maintenance-agent-01-v2
+      STATE_WINDOW_SIZE: "5"
+      MAX_RECOVERY_ATTEMPTS: "3"
+      SPEED_REDUCTION_PERCENTAGE: "20"
+    networks:
+      - factory-network-v2
+    restart: unless-stopped
+
+  machine-controller:
+    build:
+      context: ./machine-controller
+    container_name: machine-controller-v2
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER: redpanda:9092
+      COMMANDS_TOPIC: factory.commands
+      COMMAND_RESULTS_TOPIC: factory.command-results
+      MACHINE_STATE_TOPIC: factory.machine-state
+      CONSUMER_GROUP: machine-controller-group-v2
+      CONTROLLER_ID: machine-controller-01-v2
+      CONTROLLER_MODE: MIXED
+    networks:
+      - factory-network-v2
+    restart: unless-stopped
+
+volumes:
+  redpanda-data-v2:
+
+networks:
+  factory-network-v2:
+    driver: bridge
