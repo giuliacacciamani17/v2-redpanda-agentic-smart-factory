@@ -362,7 +362,8 @@ Le code hanno dimensione massima configurabile:
 ```python
 self.temperatures = deque(maxlen=self.window_size)
 self.vibrations = deque(maxlen=self.window_size)
-self.speeds = deque(maxlen=self.window_size)
+self.speeds = deque(maxlen=self.window_size
+)
 ```
 
 Questa è una forma di **memoria a breve termine**. Consente di calcolare medie e trend recenti senza conservare indefinitamente tutti gli eventi. La memoria agentica serve proprio a **mantenere contesto**, ricordare **azioni precedenti** e utilizzare **risultati passati** nelle valutazioni successive.
