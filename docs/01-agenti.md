@@ -258,12 +258,14 @@ Un agente introduce invece ulteriori capacità:
 | Componente | Domanda | Implementazione nel progetto |
 |---|---|---|
 | Percezione | Che cosa sta accadendo? | Consumo di `factory.telemetry` |
-| Memoria | Che cosa è accaduto di recente? | `MachineState` con finestre di temperatura e vibrazione |
-| Valutazione | Quanto è rischiosa la situazione? | `risk_engine.py` |
-| Decisione | Quale comportamento è opportuno? | `policy.py` |
-| Azione | Quale comando deve essere eseguito? | Pubblicazione su `factory.commands` |
-| Feedback | L'azione è stata eseguita? | Consumo di `factory.command-results` |
-| Audit | Come ricostruisco il processo? | `factory.agent-decisions`, `factory.agent-feedback` e `correlation_id` |
+| Memoria | Che cosa è accaduto di recente? | `MachineState` con finestre di temperatura, vibrazione e velocità |
+| Valutazione | Quanto è rischiosa la situazione? | Calcolo deterministico realizzato in `risk_engine.py` |
+| Decisione | Quale comportamento è opportuno? | Politica iniziale e politica di recupero definite in `policy.py` |
+| Azione | Quale comando deve essere eseguito? | Pubblicazione dei comandi operativi su `factory.commands` |
+| Risultato | Il controller ha applicato il comando? | Consumo di `factory.command-results` |
+| Feedback | Come deve reagire l'agente al risultato? | Pubblicazione su `factory.agent-feedback` e, in caso di fallimento, generazione di una decisione di recupero |
+| Stato macchina | Qual è lo stato effettivo dopo l'azione? | Pubblicazione su `factory.machine-state` da parte del Machine Controller |
+| Audit | Come ricostruisco il processo? | Utilizzo di `factory.agent-decisions`, `factory.agent-feedback` e degli identificatori di correlazione |
 
 ### Percezione
 
@@ -279,20 +281,29 @@ Nel progetto, il `Machine Simulator` pubblica misurazioni strutturate come:
 
 Questi dati vengono inseriti in un messaggio JSON e pubblicati sul topic `factory.telemetry`.
 
-Nel progetto un evento di telemetria ha questa struttura:
+Nel progetto un evento di telemetria ha una struttura simile alla seguente:
 
 ```json
 {
   "event_id": "uuid-evento",
   "correlation_id": "abc-125",
   "machine_id": "machine-01",
+  "timestamp": "2026-09-13T18:30:00+00:00",
+  "sequence_number": 3,
   "temperature": 93.94,
   "vibration": 6.82,
   "speed": 1450,
   "energy_consumption": 128.0,
-  "phase": "DEGRADING"
+  "phase": "DEGRADING",
+  "status": "RUNNING",
+  "simulation_mode": "STATE_AWARE_CONTROLLED_RANDOM",
+  "simulation_scenario": "PROGRESSIVE_DEGRADATION",
+  "source_state_event_id": null,
+  "source_state_correlation_id": null
 }
 ```
+
+I campi `source_state_event_id` e `source_state_correlation_id` collegano la nuova telemetria all'ultimo stato della macchina, quando disponibile. Questa relazione permette al simulatore di generare un nuovo blocco coerente con l'ultima azione applicata dal controller.
 
 Il `Maintenance Agent` si iscrive al topic di telemetria e riceve ogni nuovo messaggio.
 
@@ -302,9 +313,17 @@ Per l’agente, quindi, ogni messaggio di telemetria rappresenta una nuova osser
 consumer.subscribe(
     [
         TELEMETRY_TOPIC,
+        COMMAND_RESULTS_TOPIC,
     ]
 )
 ```
+
+Il Maintenance Agent consuma due categorie di eventi:
+
+- gli eventi di `factory.telemetry`, che rappresentano la percezione dello stato della macchina;
+- gli eventi di `factory.command-results`, che rappresentano l'esito delle azioni precedentemente richieste.
+
+La doppia sottoscrizione permette all'agente di elaborare sia nuove osservazioni sia il feedback prodotto dal Machine Controller.
 
 L'agente non legge soltanto sensori fisici. In un sistema event-driven, un topic può costituire l'interfaccia percettiva dell'agente.
 
@@ -343,6 +362,7 @@ Le code hanno dimensione massima configurabile:
 ```python
 self.temperatures = deque(maxlen=self.window_size)
 self.vibrations = deque(maxlen=self.window_size)
+self.speeds = deque(maxlen=self.window_size)
 ```
 
 Questa è una forma di **memoria a breve termine**. Consente di calcolare medie e trend recenti senza conservare indefinitamente tutti gli eventi. La memoria agentica serve proprio a **mantenere contesto**, ricordare **azioni precedenti** e utilizzare **risultati passati** nelle valutazioni successive.
