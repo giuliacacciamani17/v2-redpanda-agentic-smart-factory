@@ -1,5 +1,6 @@
 # Redpanda
 
+
 ## Che cos'è Redpanda
 
 Redpanda è una piattaforma di **event streaming** compatibile con il protocollo Kafka, progettata per consentire la gestione e l'elaborazione di flussi di eventi in tempo reale.
