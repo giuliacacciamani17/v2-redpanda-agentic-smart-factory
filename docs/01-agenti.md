@@ -38,7 +38,7 @@ GitHub visualizza i diagrammi Mermaid direttamente nei file Markdown, quindi il 
 
 Gli agenti possono essere classificati in base al modo in cui **prendono decisioni** e **gestiscono l'interazione con l'ambiente**.
 
-**1. Agenti reattivi** 
+###1. Agenti reattivi
 
 Rappresentano la forma più semplice di agente. Non mantengono una rappresentazione complessa dello stato del mondo e rispondono direttamente agli stimoli ricevuti.
 
@@ -64,7 +64,7 @@ Esempi:
 
 ---
 
-**2. Agenti orientati agli obiettivi**
+### 2. Agenti orientati agli obiettivi
 
 Prendono decisioni in funzione di un obiettivo da raggiungere.
 
@@ -94,7 +94,7 @@ Esempi:
 
 ---
 
-**3. Agenti che apprendono**
+### 3. Agenti che apprendono
 
 Migliorano il proprio comportamento attraverso l'esperienza.
 
@@ -119,7 +119,7 @@ Esempi:
 
 ---
 
-**4. Agenti basati su Large Language Model (LLM)**
+### 4. Agenti basati su Large Language Model (LLM)
 
 Gli agenti moderni sono spesso costruiti utilizzando un **Large Language Model (LLM)** come componente di ragionamento.
 
@@ -150,7 +150,7 @@ Esempi:
 
 La struttura interna di un agente può variare in funzione della complessità del problema da risolvere.
 
-**1. Architettura Single Agent**
+### 1. Architettura Single Agent
 
 Nell'architettura **Single Agent** un unico agente gestisce l'intero processo decisionale.
 
@@ -169,14 +169,14 @@ L'agente si occupa di:
 
 | **Vantaggi** | **Svantaggi** |
 |------------|-----------|
-| semplicità architetturale | limitata scalabilità
- minori costi di sviluppo | minor specializzazione delle competenze
+| Semplicità architetturale | Limitata scalabilità
+ Minori costi di sviluppo | Minor specializzazione delle competenze
 
 ---
 
 
 
-**2. Architettura Multi-Agent**
+### 2. Architettura Multi-Agent
 
 In un sistema **Multi-Agent** più agenti specializzati collaborano per raggiungere un obiettivo comune.
 
@@ -198,14 +198,14 @@ Esempio:
 
 | **Vantaggi** | **Svantaggi** |
 |------------|-----------|
-| specializzazione delle attività | coordinamento più complesso
-  maggiore modularità | gestione della comunicazione tra agenti
+| Specializzazione delle attività | Coordinamento più complesso
+  Maggiore modularità | Gestione della comunicazione tra agenti
 
 
 
 ---
 
-**3.Human-in-the-Loop**
+### 3. Human-in-the-Loop
 
 In alcune applicazioni l'essere umano rimane parte integrante del processo decisionale.
 
@@ -277,7 +277,9 @@ Nel progetto, il `Machine Simulator` pubblica misurazioni strutturate come:
 - vibrazione;
 - velocità;
 - consumo energetico;
-- fase operativa.
+- fase operativa;
+- stato della macchina;
+- scenario di simulazione.
 
 Questi dati vengono inseriti in un messaggio JSON e pubblicati sul topic `factory.telemetry`.
 
@@ -305,9 +307,10 @@ Nel progetto un evento di telemetria ha una struttura simile alla seguente:
 
 I campi `source_state_event_id` e `source_state_correlation_id` collegano la nuova telemetria all'ultimo stato della macchina, quando disponibile. Questa relazione permette al simulatore di generare un nuovo blocco coerente con l'ultima azione applicata dal controller.
 
-Il `Maintenance Agent` si iscrive al topic di telemetria e riceve ogni nuovo messaggio.
+Il Maintenance Agent consuma due categorie di eventi:
 
-Per l’agente, quindi, ogni messaggio di telemetria rappresenta una nuova osservazione dello stato della macchina:
+- gli eventi di `factory.telemetry`, che rappresentano la percezione dello stato della macchina;
+- gli eventi di `factory.command-results`, che rappresentano l'esito delle azioni precedentemente richieste.
 
 ```python
 consumer.subscribe(
@@ -317,11 +320,6 @@ consumer.subscribe(
     ]
 )
 ```
-
-Il Maintenance Agent consuma due categorie di eventi:
-
-- gli eventi di `factory.telemetry`, che rappresentano la percezione dello stato della macchina;
-- gli eventi di `factory.command-results`, che rappresentano l'esito delle azioni precedentemente richieste.
 
 La doppia sottoscrizione permette all'agente di elaborare sia nuove osservazioni sia il feedback prodotto dal Machine Controller.
 
@@ -345,32 +343,48 @@ flowchart TD
 
 ### Memoria e stato interno
 
-Viene conservata una finestra delle ultime misurazioni:
+Lo stato contiene finestre limitate delle ultime temperature, vibrazioni e velocità:
 
 ```python
 @dataclass
 class MachineState:
     machine_id: str
     window_size: int
+
     temperatures: deque[float] = field(init=False)
     vibrations: deque[float] = field(init=False)
+    speeds: deque[int] = field(init=False)
+
     last_action: str = "NO_ACTION"
+    
 ```
 
 Le code hanno dimensione massima configurabile:
 
 ```python
-self.temperatures = deque(maxlen=self.window_size)
-self.vibrations = deque(maxlen=self.window_size)
-self.speeds = deque(maxlen=self.window_size
+self.temperatures = deque(
+    maxlen=self.window_size
+)
+self.vibrations = deque(
+    maxlen=self.window_size
+)
+self.speeds = deque(
+    maxlen=self.window_size
 )
 ```
 
+Questa è una forma di **memoria a breve termine**. Consente di calcolare medie e trend recenti senza conservare indefinitamente tutti gli eventi.
 
+Lo stato contiene inoltre informazioni operative:
 
+- `current_speed` conserva l'ultima velocità conosciuta;
+- `machine_status` conserva lo stato operativo della macchina;
+- `pending_command_id` identifica un comando in attesa di risultato;
+- `pending_action` conserva l'azione associata al comando;
+- `last_command_result` conserva l'ultimo esito ricevuto;
+- `recovery_attempts` conta i tentativi automatici eseguiti dopo un fallimento.
 
-
-Questa è una forma di **memoria a breve termine**. Consente di calcolare medie e trend recenti senza conservare indefinitamente tutti gli eventi. La memoria agentica serve proprio a **mantenere contesto**, ricordare **azioni precedenti** e utilizzare **risultati passati** nelle valutazioni successive.
+Queste informazioni permettono all'agente di ricordare azioni e risultati precedenti e di non trattare ogni telemetria come un evento isolato.
 
 ### Valutazione del rischio
 
@@ -394,10 +408,10 @@ VIBRATION_WEIGHT = 0.45
 TREND_WEIGHT = 0.10
 ```
 
-Questo significa che il 45% del rischio deriva dalla temperatura, 
-45% del rischio deriva dalla vibrazione e infine il 10% del rischio deriva dal trend. Il trend indica semplicemente l’andamento recente dei valori nel tempo, verificando se i valori stanno aumentando progressimente nelle ultime misurazioni.
+Il 45% del rischio deriva dalla temperatura media, 
+45% del rischio deriva dalla vibrazione media e il 10% dal trend recente. Il trend verifica se temperatura e vibrazione stanno aumentando progressivamente nelle ultime misurazioni.
 
-Mentre per quanto riguarda le componenti `temperature_risk`, `vibration_risk` e `trend_risk` vengono calcolate come segue:
+La componente `temperature_risk` viene calcolata come segue:
 
 
 ```python
@@ -408,7 +422,7 @@ Mentre per quanto riguarda le componenti `temperature_risk`, `vibration_risk` e 
     )
 ```
 
-Il sistema con la funziona `normalize` recupera la temperatura media e la confronta con due soglie `NORMAL_TEMPERATURE = 65.0` e `CRITICAL_TEMPERATURE = 90.0` ed il comportamento è:
+La funziona `normalize` confronta la temperatura media con `NORMAL_TEMPERATURE = 65.0` e `CRITICAL_TEMPERATURE = 90.0` ed il comportamento è:
 ```text
 Temperatura media minore o uguale a 65 °C
 → temperature_risk = 0.0
@@ -420,7 +434,7 @@ Temperatura media compresa tra 65 °C e 90 °C
 → temperature_risk è un valore proporzionale tra 0.0 e 1.0
 ```
 
-La seconda componente viene calcolata con:
+La componente `vibration_risk` viene calcolata come segue:
 ```python   
     vibration_risk = normalize(
         state.average_vibration(),
@@ -428,7 +442,7 @@ La seconda componente viene calcolata con:
         CRITICAL_VIBRATION,
     )
 ```
-Il sistema recupera la vibrazione media e la confronta con due soglie `NORMAL_VIBRATION= 2.0` e `CRITICAL_VIBRATION = 7.0` ed il comportamento è:
+La vibrazione media viene confrontata con `NORMAL_VIBRATION = 2.0` e `CRITICAL_VIBRATION = 7.0`:
 ```text
 Vibrazione media minore o uguale a 2.0
 → vibration_risk = 0.0
@@ -440,7 +454,7 @@ Vibrazione media compresa tra 2.0 e 7.0
 → vibration_risk è un valore proporzionale tra 0.0 e 1.0
 ```
 
-Le funzioni non usano direttamente soltanto l'ultima misurazione ricevuta, ma utilizzano le medie calcolate sulla finestra di memoria:
+Le funzioni non utilizzano direttamente soltanto l'ultima misurazione ricevuta, ma le medie calcolate sulla finestra di memoria:
 
 ```python
 state.average_temperature()
@@ -451,8 +465,7 @@ Infine la terza componente viene calcolate con:
 ```python
     trend_risk = calculate_trend_risk(state)
 ```
-Non considera soltanto quanto siano elevati i valori, ma controlla se temperatura e vibrazione stanno aumentando progressivamente nel tempo, considerando le ultime misurazioni. Se non sono ancora presenti tali valori, il sistema non dispone di informazioni sufficienti per stabilire un andamento.
-
+Il trend controlla se temperatura e vibrazione stanno aumentando progressivamente nel tempo. Se non sono ancora disponibili almeno tre misurazioni, il sistema non dispone di informazioni sufficienti per stabilire un andamento.
 
 
 
@@ -489,8 +502,130 @@ def select_action(risk_score: float) -> str:
 
 Separare il calcolo del rischio dalla politica rende il sistema più leggibile e testabile. Le soglie possono cambiare senza riscrivere l'acquisizione degli eventi.
 
+La selezione basata sul rischio viene affiancata da una valutazione contestuale dello stato operativo.
+
+Se la telemetria indica:
+
+```text
+status = STOPPED
+speed = 0
+```
+
+l'agente seleziona:
+
+```text
+STOPPED_OBSERVATION
+```
+
+Questa decisione viene registrata in `factory.agent-decisions`, ma non genera un comando. In questo modo l'agente osserva il raffreddamento della macchina senza richiedere ulteriori arresti.
+
+```python
+def select_contextual_action(
+    telemetry: dict[str, Any],
+    risk_score: float,
+) -> str:
+    machine_status = str(
+        telemetry["status"]
+    ).upper()
+
+    current_speed = int(
+        telemetry["speed"]
+    )
+
+    if machine_status == "STOPPED":
+        if current_speed != 0:
+            raise ValueError(
+                "Una macchina con stato STOPPED "
+                "deve avere velocita uguale a zero"
+            )
+
+        return STOPPED_OBSERVATION
+
+    return select_action(risk_score)
+```
+
+Le decisioni che non generano comandi sono:
+
+```text
+NO_ACTION
+MONITOR
+STOPPED_OBSERVATION
+```
+
+Le decisioni operative sono:
+
+```text
+REDUCE_SPEED
+REQUEST_INSPECTION
+EMERGENCY_STOP
+```
+
 ---
 
+### Politica di recupero
+
+Quando un comando **fallisce**, l'agente applica una politica di recupero e può generare una nuova decisione.
+
+```text
+REDUCE_SPEED fallisce
+→ REQUEST_INSPECTION
+
+REQUEST_INSPECTION fallisce
+→ EMERGENCY_STOP
+
+EMERGENCY_STOP fallisce
+→ nuovo tentativo di EMERGENCY_STOP
+
+Numero massimo di tentativi superato
+→ MANUAL_INTERVENTION_REQUIRED
+```
+
+La selezione viene realizzata dalla funzione:
+
+```python
+def select_recovery_action(
+    failed_action: str,
+    recovery_attempt: int,
+    max_recovery_attempts: int,
+) -> str | None:
+    if recovery_attempt > max_recovery_attempts:
+        return None
+
+    recovery_actions = {
+        REDUCE_SPEED: REQUEST_INSPECTION,
+        REQUEST_INSPECTION: EMERGENCY_STOP,
+        EMERGENCY_STOP: EMERGENCY_STOP,
+    }
+
+    return recovery_actions.get(
+        failed_action
+    )
+```
+
+Il numero massimo di tentativi è configurato tramite `MAX_RECOVERY_ATTEMPTS`. Nel progetto il valore predefinito è `3`. Il limite impedisce che un errore persistente generi un ciclo infinito di comandi.
+
+### Calcolo della velocità obiettivo
+
+I comandi operativi contengono sia la velocità corrente sia la velocità da raggiungere:
+
+```text
+current_speed
+target_speed
+```
+
+Per `REDUCE_SPEED`, la velocità obiettivo viene calcolata applicando una riduzione percentuale. Nel progetto la riduzione predefinita è pari al 20%.
+
+```text
+Velocità corrente: 1500
+Riduzione: 20%
+Velocità obiettivo: 1200
+```
+
+Per `EMERGENCY_STOP`, la velocità obiettivo è sempre `0`.
+
+Per `REQUEST_INSPECTION`, la velocità rimane invariata. L'azione modifica lo stato operativo in `INSPECTION_REQUIRED`, ma non modifica direttamente la velocità.
+
+---
 
 
 ## Decisione, comando, risultato e feedback
@@ -500,9 +635,10 @@ Questi concetti sono distinti.
 | Elemento | Significato | Topic |
 |---|---|---|
 | Decisione | Valutazione dell'agente | `factory.agent-decisions` |
-| Comando | Azione operativa richiesta | `factory.commands` |
-| Risultato | Esito tecnico prodotto dal controller | `factory.command-results` |
-| Feedback | Conferma che l'agente ha acquisito l'esito | `factory.agent-feedback` |
+| Comando | Azione operativa richiesta al controller| `factory.commands` |
+| Risultato | Esito tecnico dell'esecuzione | `factory.command-results` |
+| Feedback | Interpretazione dell'esito e strategia successiva | `factory.agent-feedback` |
+| Stato macchina | Stato effettivo conseguente a un comando riuscito | `factory.machine-state` |
 
 ```mermaid
 sequenceDiagram
@@ -514,66 +650,156 @@ sequenceDiagram
     participant MC as Machine Controller
     participant R as factory.command-results
     participant F as factory.agent-feedback
+    participant MS as factory.machine-state
 
-    S->>T: Telemetria
-    T->>A: Percezione
-    A->>D: Decisione e motivazione
-    alt Azione operativa
-        A->>C: Comando
-        C->>MC: Richiesta di esecuzione
-        MC->>R: SUCCESS oppure FAILED
-        R->>A: Risultato
-        A->>F: Feedback processato
-    else NO_ACTION o MONITOR
+    S->>T: Pubblica telemetria
+    T->>A: Nuova osservazione
+    A->>D: Pubblica decisione iniziale
+
+    alt NO_ACTION, MONITOR o STOPPED_OBSERVATION
         Note over A,C: Nessun comando operativo
+    else Azione operativa
+        A->>C: Pubblica comando
+        C->>MC: Richiesta di esecuzione
+        MC->>R: Pubblica SUCCESS oppure FAILED
+        R->>A: Comunica il risultato
+
+        alt Comando riuscito
+            MC->>MS: Pubblica il nuovo stato macchina
+            A->>F: Pubblica feedback COMPLETED
+        else Comando fallito
+            A->>F: Pubblica RECOVERY_SCHEDULED
+            A->>D: Pubblica decisione RECOVERY
+            A->>C: Pubblica nuovo comando
+        end
     end
+
+    MS->>S: Stato utilizzato dal blocco successivo
 ```
 
 ### Feedback positivo
 
+Un comando eseguito correttamente produce un feedback con stato `COMPLETED`:
+
 ```json
 {
   "correlation_id": "abc-131",
-  "action": "REQUEST_INSPECTION",
+  "action": "EMERGENCY_STOP",
   "command_result": "SUCCESS",
-  "machine_status": "INSPECTION_REQUIRED",
-  "feedback_status": "PROCESSED"
+  "feedback_status": "COMPLETED",
+  "previous_speed": 1500,
+  "target_speed": 0,
+  "current_speed": 0,
+  "machine_status": "STOPPED",
+  "state_changed": true,
+  "recovery_required": false,
+  "next_action": null,
+  "recovery_attempt": 0,
+  "max_recovery_attempts": 3
 }
 ```
 
-### Feedback negativo
+Il valore `COMPLETED` indica che il comando è stato eseguito e che l'agente ha aggiornato il proprio stato interno.
+
+### Feedback negativo e recupero
+
+Quando un comando fallisce, il Maintenance Agent pubblica un feedback con stato `RECOVERY_SCHEDULED`:
 
 ```json
 {
   "correlation_id": "abc-130",
   "action": "REDUCE_SPEED",
   "command_result": "FAILED",
+  "feedback_status": "RECOVERY_SCHEDULED",
+  "previous_speed": 1450,
+  "target_speed": 1160,
+  "current_speed": 1450,
   "machine_status": "RUNNING",
-  "feedback_status": "PROCESSED"
+  "state_changed": false,
+  "recovery_required": true,
+  "next_action": "REQUEST_INSPECTION",
+  "recovery_attempt": 1,
+  "max_recovery_attempts": 3
 }
 ```
 
-`FAILED` e `PROCESSED` non sono in contraddizione:
+I due campi descrivono aspetti differenti:
 
 - `command_result = FAILED` indica che il controller non ha applicato l'azione;
-- `feedback_status = PROCESSED` indica che l'agente ha ricevuto e registrato correttamente il fallimento.
+- `feedback_status = RECOVERY_SCHEDULED` indica che l'agente ha elaborato il fallimento e programmato una nuova strategia.
 
-Senza feedback, l'agente conoscerebbe soltanto l'intenzione di agire. Con il feedback, l'agente può distinguere tra comando inviato e cambiamento realmente applicato.
+Dopo il feedback, l'agente pubblica:
+
+1. una nuova decisione con `decision_type = RECOVERY`;
+2. un nuovo comando associato alla nuova azione.
+
+Se il numero massimo di tentativi viene superato, il feedback assume il valore:
+
+```text
+MANUAL_INTERVENTION_REQUIRED
+```
+
+In questo caso non vengono prodotti ulteriori comandi automatici.
+
+### Stato effettivo della macchina
+
+Il topic `factory.machine-state` contiene lo stato raggiunto dopo un comando eseguito correttamente.
+
+```json
+{
+  "state_event_id": "uuid-stato",
+  "source_result_id": "uuid-risultato",
+  "source_command_id": "uuid-comando",
+  "source_decision_id": "uuid-decisione",
+  "correlation_id": "abc-131",
+  "controller_id": "machine-controller-01-v2",
+  "machine_id": "machine-01",
+  "timestamp": "2026-09-13T18:30:10+00:00",
+  "speed": 0,
+  "previous_speed": 1500,
+  "target_speed": 0,
+  "status": "STOPPED",
+  "last_applied_action": "EMERGENCY_STOP",
+  "state_changed": true
+}
+```
+
+Il Machine Controller pubblica un nuovo stato soltanto quando il comando ha esito `SUCCESS`.
+
+Il Machine Simulator legge l'ultimo stato disponibile prima di produrre nuove telemetrie e seleziona uno scenario coerente:
+
+```text
+Nessuno stato precedente
+→ PROGRESSIVE_DEGRADATION
+
+Ultima azione REDUCE_SPEED
+→ RECOVERY_AFTER_SPEED_REDUCTION
+
+Stato INSPECTION_REQUIRED
+→ INSPECTION_PENDING
+
+Stato STOPPED
+→ STOPPED_COOLING
+```
+
+Questa comunicazione chiude il ciclo tra azione e ambiente simulato.
 
 ---
 
 ## Perché il Maintenance Agent è un agente
 
-Il `Maintenance Agent` non è un semplice inoltro di messaggi perché:
+Il `Maintenance Agent` non è un semplice componente di inoltro di messaggi perché:
 
 1. percepisce telemetria da un ambiente esterno;
 2. conserva misurazioni precedenti;
 3. calcola uno stato sintetico di rischio;
-4. sceglie tra più azioni possibili;
-5. spiega la decisione;
+4. sceglie dinamicamente tra più azioni;
+5. spiega la decisione e distingue tra quelle iniziali e di recupero;
 6. evita comandi operativi duplicati;
 7. riceve l'esito delle azioni;
-8. aggiorna lo stato interno dopo il feedback.
+8. aggiorna lo stato operativo sulla base del risultato;
+9. reagisce ai fallimenti scegliendo una nuova azione;
+10. limita il numero di tentativi automativi.
 
 
 
@@ -587,16 +813,25 @@ Il `Maintenance Agent` è principalmente **reattivo**:
 riceve una telemetria
 → aggiorna lo stato
 → calcola il rischio
-→ reagisce
+→ sceglie un'azione
+→ osserva il risultato
+→ reagisce al feedback
 ```
 
 Possiede però una componente più evoluta rispetto a una semplice regola istantanea, perché utilizza:
 
-- una finestra temporale;
-- medie recenti;
+- una finestra temporale di osservazioni;
+- medie recenti di temperatura, vibrazione e velocità;
 - trend crescenti;
-- ultima azione;
-- feedback del controller.
+- ultima azione selezionata;
+- ultimo risultato ricevuto;
+- stato operativo della macchina;
+- presenza di un comando in attesa;
+- numero di tentativi di recupero;
+- politica di escalation dopo un fallimento.
+
+Il Maintenance Agent non apprende modificando autonomamente i propri parametri. L'adattamento è deterministico e deriva dallo stato interno, dalla telemetria e dal feedback ricevuto dal controller.
+
 
 ---
 
