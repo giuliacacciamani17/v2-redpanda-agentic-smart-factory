@@ -7,7 +7,7 @@ Redpanda è una piattaforma di **event streaming** compatibile con il protocollo
 
 > **Idea chiave:** nel progetto, Redpanda è il **broker di event streaming** utilizzato come componente centrale per implementare il Data plane.
 
-Una piattaforma di event streaming riceve eventi prodotti dalle applicazioni, i  `producer`, li conserva in sequenza e li rende disponibili ad altre applicazioni che devono elaborarli, i `consumer`. 
+Una piattaforma di event streaming riceve eventi prodotti dalle applicazioni,cioè  i  `producer`, li conserva in sequenza e li rende disponibili ad altre applicazioni che devono elaborarli, i `consumer`. 
 
 ```mermaid
 flowchart LR
@@ -31,7 +31,8 @@ Le applicazioni contemporanee richiedono infatti:
 - elevata scalabilità;
 - comunicazione asincrona;
 - riduzione delle dipendenze tra servizi;
-- gestione di grandi volumi di dati.
+- gestione di grandi volumi di dati;
+- osservabilità dei flussi applicativi.
 
 In scenari di questo tipo, una comunicazione diretta tra applicazioni può generare **elevato accoppiamento** e **ridurre la flessibilità dell'intera architettura**.
 
@@ -62,8 +63,8 @@ Questa struttura favorisce una **comunicazione asincrona**. Il producer può pub
 | Utilizzo | Descrizione |
 |-----------|-------------|
 | **Broker** | Riceve eventi dai sistemi che li generano e li distribuisce alle applicazioni interessate. |
-| **Event Streaming** | Gli eventi prodotti vengono conservati all'interno dei topic e possono essere elaborati in tempo reale da uno o più consumer. |
-| **Microservizi** | Consente la comunicazione asincrona tra servizi indipendenti all'interno di architetture basate su microservizi. |
+| **Event Streaming** | Conserva gli eventi nei topic e li rende disponibili in tempo reale a uno o più consumer. |
+| **Microservizi** | Consente la comunicazione asincrona tra servizi indipendenti. |
 | **Data Pipeline** | Permette il trasferimento delle informazioni dalle sorgenti dati ai sistemi di elaborazione, ai Data Lake e ai database. |
 | **Sistemi AI e Agentic Architecture** | Supporta la comunicazione tra agenti intelligenti attraverso lo scambio di eventi. |
 
@@ -83,10 +84,13 @@ Maintenance Agent
 Machine Controller
 ```
 
-Il Machine Simulator produce telemetrie, mentre il Maintenance Agent produce decisioni, comandi e feedback e infine il Machine Controller produce risultati.
+Le responsabilità sono:
+
+- il `Machine Simulator` pubblica la telemetria in `factory.telemetry`;
+- il `Maintenance Agent` pubblica decisioni, comandi e feedback;
+- il `Machine Controller` pubblica risultati e aggiornamenti dello stato macchina.
 
 ### 2. Broker
-
 Il broker riceve e conserva gli eventi, quindi li rende disponibili ai consumer.
 
 Nel progetto il broker è:
@@ -104,11 +108,16 @@ Nel progetto sono consumer:
 ```text
 Maintenance Agent
 Machine Controller
+Machine Simulator
 ```
 
-Il Maintenance Agent consuma telemetrie e risultati invece il Machine Controller consuma comandi.
+Le responsabilità sono:
 
-Uno stesso servizio può essere sia producer sia consumer.
+- il `Maintenance Agent` consuma `factory.telemetry` e `factory.command-results`;
+- il `Machine Controller` consuma `factory.commands`;
+- il `Machine Simulator` consuma `factory.machine-state` prima di generare un nuovo blocco.
+
+Anche il Machine Simulator è quindi sia producer sia consumer: pubblica le telemetrie e legge lo stato risultante dagli interventi precedenti.
 
 ---
 
@@ -118,38 +127,50 @@ Il flusso completo è:
 
 ```mermaid
 flowchart TD
-    A["Machine Simulator"]
-    B["Redpanda<br/>factory.telemetry"]
-    C["Maintenance Agent"]
-    D["Redpanda<br/>factory.commands"]
-    E["Machine Controller"]
-    F["Redpanda<br/>factory.command-results"]
-    G["Maintenance Agent"]
-    H["Redpanda<br/>factory.agent-feedback"]
+    S[Machine Simulator]
+    T[factory.telemetry]
+    A[Maintenance Agent]
+    D[factory.agent-decisions]
+    C[factory.commands]
+    MC[Machine Controller]
+    R[factory.command-results]
+    F[factory.agent-feedback]
+    MS[factory.machine-state]
 
-    A -->|"Pubblica la telemetria"| B
-    B -->|"Rende disponibile l'evento"| C
-    C -->|"Pubblica un comando"| D
-    D -->|"Rende disponibile il comando"| E
-    E -->|"Pubblica il risultato"| F
-    F -->|"Rende disponibile il risultato"| G
-    G -->|"Pubblica il feedback"| H
+    S -->|Pubblica telemetria| T
+    T -->|Rende disponibile la telemetria| A
+    A -->|Registra la decisione| D
+    A -->|Pubblica un comando operativo| C
+    C -->|Rende disponibile il comando| MC
+    MC -->|Pubblica il risultato| R
+    R -->|Rende disponibile il risultato| A
+    A -->|Pubblica il feedback| F
+    MC -->|Pubblica lo stato dopo un successo| MS
+    MS -->|Stato iniziale del blocco successivo| S
+
+    R -. Fallimento .-> A
+    A -. Decisione RECOVERY .-> D
+    A -. Nuovo comando .-> C
 ```
 
-Il Machine Simulator non conosce il codice del Maintenance Agent, conosce soltanto il broker e il topic dove deve pubblicare gli eventi:
+
+l `Machine Simulator` non conosce il codice del `Maintenance Agent`. Conosce soltanto il broker e i topic necessari:
 
 ```text
 broker = redpanda:9092
-topic = factory.telemetry
+telemetry topic = factory.telemetry
+machine state topic = factory.machine-state
 ```
 
-Allo stesso modo, il Maintenance Agent non chiama direttamente il Machine Controller, ma pubblica un evento su `factory.commands`, che il Controller legge in modo indipendente.
+Allo stesso modo, il `Maintenance Agent` non chiama direttamente il `Machine Controller`, ma pubblica un evento in `factory.commands`, che il controller legge in modo indipendente.
 
+
+Il `Machine Controller` non modifica direttamente il simulatore. Dopo un comando riuscito pubblica il nuovo stato in `factory.machine-state`, che verrà letto dal simulator all'avvio del blocco successivo.
 ---
 
 ## I topic del progetto
 
-Il progetto usa cinque topic applicativi:
+Il progetto usa sei topic applicativi:
 
 ```text
 factory.telemetry
@@ -157,41 +178,110 @@ factory.agent-decisions
 factory.commands
 factory.command-results
 factory.agent-feedback
+factory.machine-state
 ```
 
 ### `factory.telemetry`
 
-Contiene le misurazioni della macchina:
-
 ```text
-temperatura
-vibrazione
-velocità
-consumo energetico
+event_id
+correlation_id
+machine_id
+timestamp
+sequence_number
+temperature
+vibration
+speed
+energy_consumption
+phase
+status
+simulation_mode
+simulation_scenario
+source_state_event_id
+source_state_correlation_id
 ```
+
+I campi principali descrivono i valori telemetrici, lo stato operativo e lo scenario utilizzato dal simulatore.
+
+I riferimenti `source_state_event_id` e `source_state_correlation_id` collegano il nuovo blocco all'ultimo stato macchina disponibile.
 
 ### `factory.agent-decisions`
 
-Contiene le valutazioni del Maintenance Agent:
+Contiene le valutazioni del Maintenance Agent.
+
+Le decisioni possono essere:
 
 ```text
+INITIAL
+→ generate da una telemetria
+
+RECOVERY
+→ generate dal fallimento di un comando
+```
+
+I campi principali sono:
+
+```text
+decision_id
+decision_type
+source_event_id
+source_result_id
+parent_decision_id
+parent_command_id
+correlation_id
 risk_score
+average_temperature
+average_vibration
+average_speed
+current_speed
 previous_action
+previous_command_result
 selected_action
+recovery_attempt
 reason
 ```
 
-### `factory.commands`
+Anche `NO_ACTION`, `MONITOR` e `STOPPED_OBSERVATION` vengono registrate nel topic, pur non generando comandi operativi.
 
-Contiene soltanto le azioni che richiedono un intervento:
+
+### `factory.commands`
+Contiene le azioni operative richieste al controller:
 
 ```text
 REDUCE_SPEED
 REQUEST_INSPECTION
 EMERGENCY_STOP
+
+I campi principali sono:
+
+```text
+command_id
+decision_id
+correlation_id
+decision_type
+action
+risk_score
+current_speed
+target_speed
+recovery_attempt
+reason
 ```
 
-`NO_ACTION` e `MONITOR` non producono comandi.
+`current_speed` rappresenta la velocità conosciuta prima dell'azione, mentre `target_speed` rappresenta la velocità da raggiungere.
+
+Per esempio:
+
+```text
+REDUCE_SPEED
+current_speed = 1500
+target_speed = 1200
+```
+
+```text
+EMERGENCY_STOP
+current_speed = 1500
+target_speed = 0
+```
 
 ### `factory.command-results`
 
@@ -201,10 +291,123 @@ Contiene il risultato prodotto dal Machine Controller:
 SUCCESS
 FAILED
 ```
+I campi principali sono:
+
+```text
+result_id
+command_id
+decision_id
+correlation_id
+controller_id
+action
+result
+previous_speed
+target_speed
+resulting_speed
+machine_status
+state_changed
+failure_reason
+failure_code
+retryable
+execution_number
+```
+
+Un comando fallito non modifica la velocità:
+
+```text
+result = FAILED
+resulting_speed = previous_speed
+state_changed = false
+```
+
+Un arresto di emergenza riuscito produce:
+
+```text
+result = SUCCESS
+resulting_speed = 0
+machine_status = STOPPED
+state_changed = true
+```
 
 ### `factory.agent-feedback`
 
-Contiene la conferma che il Maintenance Agent ha ricevuto e interpretato il risultato del Controller.
+Contiene il modo in cui il Maintenance Agent interpreta il risultato del controller.
+
+Gli stati principali sono:
+
+```text
+COMPLETED
+→ il comando è riuscito
+
+RECOVERY_SCHEDULED
+→ il comando è fallito ed è stata scelta una nuova azione
+
+MANUAL_INTERVENTION_REQUIRED
+→ è stato superato il numero massimo di tentativi automatici
+```
+
+I campi principali sono:
+
+```text
+feedback_id
+result_id
+command_id
+decision_id
+correlation_id
+command_result
+feedback_status
+current_speed
+machine_status
+state_changed
+recovery_required
+next_action
+recovery_attempt
+max_recovery_attempts
+message
+```
+
+In caso di fallimento recuperabile, il feedback indica la nuova azione. Il Maintenance Agent pubblica poi una decisione `RECOVERY` e un nuovo comando con lo stesso `correlation_id`.
+
+### `factory.machine-state`
+
+Contiene lo stato effettivo della macchina dopo un comando eseguito con successo.
+
+I campi principali sono:
+
+```text
+state_event_id
+source_result_id
+source_command_id
+source_decision_id
+correlation_id
+controller_id
+machine_id
+timestamp
+speed
+previous_speed
+target_speed
+status
+last_applied_action
+state_changed
+```
+
+Il Machine Controller pubblica in questo topic solamente quando il comando ha risultato `SUCCESS`.
+
+Il Machine Simulator legge lo stato più recente e seleziona il blocco successivo:
+
+```text
+Nessuno stato precedente
+→ PROGRESSIVE_DEGRADATION
+
+Ultima azione REDUCE_SPEED
+→ RECOVERY_AFTER_SPEED_REDUCTION
+
+Stato INSPECTION_REQUIRED
+→ INSPECTION_PENDING
+
+Stato STOPPED
+→ STOPPED_COOLING
+```
 
 ---
 
@@ -215,8 +418,12 @@ Il Machine Simulator pubblica la telemetria con:
 ```python
 producer.produce(
     topic=TELEMETRY_TOPIC,
-    key=event["machine_id"].encode("utf-8"),
-    value=json.dumps(event).encode("utf-8"),
+    key=event[
+        "machine_id"
+    ].encode("utf-8"),
+    value=json.dumps(
+        event
+    ).encode("utf-8"),
     callback=handle_delivery,
 )
 ```
@@ -233,7 +440,9 @@ I parametri principali sono:
 **4. Callback**: Comunica se Redpanda ha accettato il record.
 
 
-Il Maintenance Agent e il Machine Controller utilizzano lo stesso modello per pubblicare decisioni, comandi, risultati e feedback.
+Il Maintenance Agent e il Machine Controller utilizzano lo stesso modello per pubblicare decisioni, comandi, risultati e feedback e stati macchina.
+
+Nel progetto i messaggi utilizzano machine_id come chiave. In questo modo gli eventi della stessa macchina vengono indirizzati in modo coerente alla stessa partizione.
 
 ---
 
@@ -262,12 +471,23 @@ consumer.subscribe(
 ```
 
 L'agente controlla periodicamente se sono disponibili messaggi:
+```python
+message = consumer.poll(
+    timeout=1.0
+)
+```     
+
+Il Machine Controller utilizza lo stesso modello per leggere `factory.commands`.
+
+Il Machine Simulator crea invece un consumer temporaneo per leggere gli stati presenti in `factory.machine-state`:
 
 ```python
-message = consumer.poll(timeout=1.0)
+consumer.subscribe(
+    [MACHINE_STATE_TOPIC]
+)
 ```
 
-Il Machine Controller applica lo stesso modello per leggere `factory.commands`.
+Il simulator utilizza un consumer group univoco per rileggere il topic dall'inizio e individuare lo stato più recente associato a `machine-01`.
 
 ---
 
@@ -281,14 +501,15 @@ partizione 1
 partizione 2
 ```
 
-Le partizioni permettono di distribuire dati e lavoro e di garantire l'ordine all'interno della singola partizione. Al momento per scopo didattico del progetto viene utilizzata una sola partizione, ma sono disponibili anche le altre nel momento in cui ci saranno più istanze per il consumer.
+e partizioni permettono di distribuire i dati e il lavoro tra più consumer. L'ordine è garantito all'interno della singola partizione, non globalmente tra tutte le partizioni.
+
 
 Gli eventi usano `machine_id` come chiave:
 
 ```python
-key=event["machine_id"].encode("utf-8")
+key=machine_id.encode("utf-8")
 ```
-
+Poiché il progetto utilizza attualmente una sola macchina, `machine-01`, gli eventi della stessa macchina vengono indirizzati alla stessa partizione. Le altre partizioni rimangono disponibili per eventuali macchine aggiuntive e per una futura elaborazione parallela.
 
 ---
 
@@ -302,14 +523,21 @@ offset 1
 offset 2
 ```
 
-Il consumer group permette a un'applicazione consumer di registrare fino a quale offset è arrivata, in modo tale che due applicazioni possano leggere in contemporanea due topic senza interferire tra di loro.
-
-Nel progetto sono presenti:
+Un consumer group permette alle istanze della stessa applicazione di coordinarsi e di registrare fino a quale offset sono arrivate.
+Nel progetto sono presenti i gruppi permanenti:
 
 ```text
-maintenance-agent-group
-machine-controller-group
+maintenance-agent-group-v2
+machine-controller-group-v2
 ```
+
+Il Machine Simulator usa invece un identificatore temporaneo con una struttura simile a:
+
+```text
+machine-simulator-state-reader-machine-01-<uuid>
+```
+
+Questo gruppo temporaneo consente a ogni esecuzione del simulator di rileggere gli stati disponibili e selezionare quello più recente.
 
 Il commit viene eseguito manualmente dopo l'elaborazione:
 
@@ -320,54 +548,20 @@ consumer.commit(
 )
 ```
 
-Questo permette al consumer di riprendere dalla posizione registrata dopo un riavvio.
+Il commit sincrono registra l'offset soltanto dopo l'elaborazione del messaggio.
 
-Durante le verifiche, entrambi i gruppi hanno mostrato:
+Il consumer lag rappresenta il numero di record disponibili che un consumer group non ha ancora elaborato.
 
 ```text
-STATE = Stable
-TOTAL-LAG = 0
+LAG = 0
 ```
 
-`LAG = 0` significa che non erano presenti record ancora da elaborare.
+significa che, nel momento dell'osservazione, il consumer group ha raggiunto l'ultimo record disponibile nelle partizioni assegnate.
+
 
 ---
 
-## Persistenza tramite volume Docker
 
-Redpanda salva i dati nel volume:
-
-```yaml
-volumes:
-  - redpanda-data:/var/lib/redpanda/data
-```
-
-Il volume conserva i dati separatamente dal ciclo di vita del container.
-
-Un normale arresto non elimina automaticamente:
-
-- topic;
-- messaggi;
-- offset;
-- metadati.
-
-Il comando:
-
-```bash
-docker compose down
-```
-
-rimuove i container ma mantiene normalmente il volume.
-
-Il comando:
-
-```bash
-docker compose down -v
-```
-
-rimuove anche il volume e azzera i dati locali.
-
----
 
 ## Configurazione Docker di Redpanda
 
@@ -443,7 +637,7 @@ Per questo il progetto usa:
 correlation_id
 ```
 
-Lo stesso valore viene propagato attraverso:
+Lo stesso valore viene propagato nel ciclo originato da una singola telemetria:
 
 ```text
 factory.telemetry
@@ -457,7 +651,22 @@ factory.command-results
 factory.agent-feedback
 ```
 
-Il `correlation_id` permette di ricostruire l'intera catena relativa a una specifica telemetria.
+Se il comando fallisce, lo stesso `correlation_id` viene mantenuto anche per:
+
+```text
+nuova factory.agent-decisions con decision_type = RECOVERY
+        ↓
+nuovo factory.commands
+        ↓
+nuovo factory.command-results
+        ↓
+nuovo factory.agent-feedback
+
+Quando un comando ha esito positivo, lo stesso identificatore viene riportato anche in:
+
+```text
+factory.machine-state
+```
 
 ---
 
@@ -470,7 +679,9 @@ Redpanda:
 - organizza record in topic e partizioni;
 - assegna offset;
 - rende i record disponibili;
-- coordina i consumer group.
+- coordina i consumer group;
+- conserva lo storico necessario per audit e replay;
+- rende osservabili i flussi tramite Redpanda Console.
 
 Redpanda non:
 
@@ -479,9 +690,10 @@ Redpanda non:
 - calcola il rischio;
 - seleziona azioni;
 - esegue comandi;
+- modifica direttamente lo stato della macchina;
 - decide se un comando deve riuscire o fallire.
 
-Queste responsabilità appartengono a Machine Simulator, Maintenance Agent e Machine Controller.
+Queste responsabilità appartengono rispettivamente al `Machine Simulator`, al `Maintenance Agent` e al `Machine Controller`.
 
 
 ---
