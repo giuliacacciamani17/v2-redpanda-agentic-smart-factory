@@ -44,7 +44,7 @@ Definisce come il sistema deve funzionare.
 ```
 **`Data Plane`**
 ```text
-Trasporta ciò che accade durante il funzionamento.
+Trasporta e rende disponibili gli eventi prodotti durante il funzionamento.
 ```
 
 Il file `compose.yaml` appartiene principalmente alla configurazione del sistema, mentre le comunicazioni che attraversano i topic Redpanda costituiscono invece il Data Plane operativo.
@@ -53,6 +53,9 @@ Un esempio di configurazione può essere:
 
 ```yaml
 STATE_WINDOW_SIZE: "5"
+MAX_RECOVERY_ATTEMPTS: "3"
+SPEED_REDUCTION_PERCENTAGE: "20"
+STATE_READ_TIMEOUT_SECONDS: "2"
 CONTROLLER_MODE: MIXED
 ```
 
@@ -64,19 +67,19 @@ CONTROLLER_MODE: MIXED
 | Ruoli | Descrizione |
 |--------|-------------|
 | **Trasporto dei dati** | Permette lo spostamento delle informazioni tra sistemi, applicazioni e servizi. |
-| **Elaborazione dei pacchetti** | Analizza e instrada i dati in base alle regole ricevute dal Control Plane. |
+| **Elaborazione dei messaggi** | Rende gli eventi disponibili ai componenti che devono interpretarli ed elaborarli. |
 | **Applicazione delle politiche** | Può implementare controlli di sicurezza, Quality of Service (QoS) e filtri di accesso ai dati. |
-| **Ottimizzazione delle prestazioni** | È progettato per garantire velocità elevate, bassa latenza ed elevata affidabilità durante la trasmissione delle informazioni. |
+| **Ottimizzazione delle prestazioni** | Supporta velocità elevate, bassa latenza ed affidabilità durante la trasmissione delle informazioni. |
 
 ---
 
-## Perché è utile utilizzare un Data Plane?
+## Perché è utile utilizzare un Data Plane
 
 L'utilizzo di un Data Plane offre numerosi vantaggi.
 
-- **Separazione delle responsabilità**: Suddivide le decisioni strategiche dalle operazioni esecutive rendendo l'architettura più organizzata e scalabile, infatti il Control Plane decide, mentre il Data Plane esegue.
+- **Separazione delle responsabilità**: distingue la configurazione del sistema dalle operazioni eseguite sui dati , infatti il Control Plane decide, mentre il Data Plane esegue.
 
-- **Maggiore efficienza**: poiché è specializzato nella movimentazione dei dati, può essere ottimizzato per prestazioni molto elevate. 
+- **Maggiore efficienza**: pla movimentazione dei dati può essere ottimizzata indipendentemente dalla logica applicativa.
 
 - **Scalabilità**: permette di gestire grandi volumi di traffico senza aumentare eccessivamente la complessità del sistema. 
 
@@ -104,13 +107,13 @@ Per questi motivi il Data Plane è ancora un'area attiva di ricerca e sviluppo.
 
 Un **Agentic Data Plane** è un'evoluzione del Data Plane progettato per sostenere il ciclo operativo di uno o più **agenti software**.
 
-L'idea fondamentale è che **non basta più movimentare i dati**: bisogna fornire agli agenti l'**accesso sicuro**, **controllato** e **contestualizzato** alle informazioni e alle azioni che possono eseguire.  
+L'idea fondamentale è che **non basta più movimentare i dati**. È necessario rendere disponibili agli agenti informazioni contestualizzate, risultati delle azioni e strumenti attraverso cui intervenire sull'ambiente.  
 
 In pratica, un Agentic Data Plane diventa l'infrastruttura che collega:
 
 - agenti AI;
 
-- modelli linguistici (LLM);
+- modelli di machine learning o modelli linguistici (LLM);
 
 - basi di dati;
 
@@ -120,7 +123,9 @@ In pratica, un Agentic Data Plane diventa l'infrastruttura che collega:
 
 - sistemi di monitoraggio e governance.
 
-## Come funziona un Agentic Data Plane?
+Nel progetto non viene utilizzato un LLM. Il Maintenance Agent è deterministico e basato su stato, calcolo del rischio, regole decisionali e feedback del controller.
+
+## Come funziona un Agentic Data Plane
 
 Un Agentic Data Plane introduce funzionalità aggiuntive rispetto a un Data Plane tradizionale.
 
@@ -138,10 +143,10 @@ Un Agentic Data Plane introduce funzionalità aggiuntive rispetto a un Data Plan
 
 | Data Plane Tradizionale | Agentic Data Plane |
 |-------------------------|-------------------|
-| Trasporta ed elabora dati | Coordina dati, strumenti e agenti AI |
-| Lavora su flussi di rete | Lavora su flussi decisionali e operativi |
-| Segue istruzioni del Control Plane | Supporta agenti autonomi che prendono decisioni |
-| Gestisce traffico dati | Gestisce dati, strumenti, permessi e azioni degli agenti |
+| Trasporta ed elabora dati | Coordina dati, strumenti e agenti AI. |
+| Lavora principalmente su flussi di dati | Lavora su flussi decisionali e operativi. |
+| Segue istruzioni del Control Plane | Supporta agenti autonomi che prendono decisioni sulla base del contesto. |
+| Gestisce il traffico dati | Gestisce dati, strumenti, permessi e azioni degli agenti. |
 
 
 
@@ -157,51 +162,65 @@ Nel progetto, il Data Plane è formato da:
 - i producer;
 - i consumer;
 - i consumer group;
-- gli eventi JSON scambiati tra i servizi.
+- gli eventi JSON scambiati tra i servizi;
+- gli identificatori che collegano telemetrie, decisioni, comandi, risultati e stati.
 
 Redpanda è quindi il **broker di event streaming che costituisce il cuore infrastrutturale del Data Plane**, ma non coincide da solo con l'intero Data Plane.
 
-Il Data Plane completo comprende anche i componenti che producono e consumano gli eventi.
+Il Data Plane completo comprende anche i componenti che producono, consumano e trasformano gli eventi:
+
+- `Machine Simulator`;
+- `Maintenance Agent`;
+- `Machine Controller`;
+
+
 
 ```mermaid
 flowchart TD
-    A["Machine Simulator"]
-    B["factory.telemetry"]
-    C["Maintenance Agent"]
-    D["factory.agent-decisions"]
-    E["factory.commands"]
-    F["Machine Controller"]
-    G["factory.command-results"]
-    H["Maintenance Agent"]
-    I["factory.agent-feedback"]
+    S[Machine Simulator]
+    T[factory.telemetry]
+    A[Maintenance Agent]
+    D[factory.agent-decisions]
+    C[factory.commands]
+    MC[Machine Controller]
+    R[factory.command-results]
+    F[factory.agent-feedback]
+    MS[factory.machine-state]
 
-    A --> B
-    B --> C
-    C --> D
-    C --> E
-    E --> F
-    F --> G
-    G --> H
-    H --> I
+    S -->|Pubblica telemetria| T
+    T -->|Nuove osservazioni| A
+    A -->|Registra decisioni| D
+    A -->|Pubblica azioni operative| C
+    C -->|Comandi da eseguire| MC
+    MC -->|Esito tecnico| R
+    R -->|Risultato del comando| A
+    A -->|Interpretazione e strategia| F
+    MC -->|Stato dopo un comando riuscito| MS
+    MS -->|Stato iniziale del blocco successivo| S
+
+    F -. Recupero richiesto .-> A
+    A -. Nuova decisione RECOVERY .-> D
+    A -. Nuovo comando .-> C
 ```
+
 ---
 
 ## Perchè inserire un Broker nel Data Plane
 
-Un Data Plane può funzionare perfettamente senza alcun message broker. Infatti è possibile utilizzare un `API Rest` oppure una `ETL Pipeline` che si frappone tra il producer e il consumer.
+Un Data Plane può funzionare perfettamente senza alcun message broker. Infatti è possibile utilizzare un `API Rest` oppure una `ETL Pipeline` tra il producer e il consumer.
 
 Tuttavia, nelle moderne architetture distribuite e negli Agentic Data Plane, **broker** ed event streaming platform sono spesso utilizzati per facilitare:
 - la comunicazione asincrona;
 - la scalabilità;
 - il disaccoppiamento tra sistemi e agenti;
-- persistenza degli eventi.
+- la persistenza degli eventi.
 
 Broker si occupa di **gestire lo scambio** tra producer e consumer.
 
 ```text
 Producer
 ↓
-Redpanda
+BROKER
 ↓
 Consumer
 ```
@@ -221,6 +240,7 @@ Data Plane
 ```
 
 > **Idea chiave**: 
+>
 > Broker = Strumento 
 >
 > Data Plane = architettura
@@ -228,9 +248,9 @@ Data Plane
 ---
 ## Comunicazione asincrona
 
-L'Agentic Data Plane, posto alla base dell'architettura del progetto, ha il compito di **disaccoppiare le diverse componenti del sistema**, evitando comunicazioni dirette tra di esse.
+L'Agentic Data Plane posto alla base del progetto **disaccoppia** i componenti ed evita comunicazioni applicative dirette.
 
-Ad esempio, il **Machine Simulator**, che genera i dati telemetrici della macchina, non invia richieste HTTP direttamente al **Maintenance Agent**. Allo stesso modo, il **Maintenance Agent**, dopo aver analizzato i dati e aver preso una decisione, non comunica direttamente con il **Machine Controller** per impartire le azioni correttive.
+Il **Machine Simulator** non invia richieste HTTP direttamente al **Maintenance Agent**. Allo stesso modo, il **Maintenance Agent** non comunica direttamente con il **Machine Controller** i quest'ultimo non modifica direttamente la memoria del simulator.
 
 Tutte le interazioni avvengono attraverso l'Agentic Data Plane, che funge da livello intermedio di comunicazione e coordinamento.
 
@@ -242,7 +262,7 @@ Simulator → Agent → Controller
 
 ```text
 Comunicazione asincrona:
-Simulator → topic → Agent → topic → Controller
+Simulator → topic → Agent → topic → Controller → topic → Simulator
 ```
 
 Questo disaccoppiamento permette ai componenti di:
@@ -250,7 +270,7 @@ Questo disaccoppiamento permette ai componenti di:
 - funzionare con velocità differenti;
 - essere riavviati separatamente;
 - essere sostituiti senza cambiare gli altri servizi;
-- rileggere eventi ancora disponibili;
+- processare eventi conservati dal broker;
 - essere osservati tramite topic e log.
 ---
 
@@ -264,18 +284,54 @@ Il Maintenance Agent conserva una finestra delle misurazioni recenti invece di r
 
 ### 2. Decisioni persistenti
 
-Ogni valutazione viene pubblicata in `factory.agent-decisions`, comprese `NO_ACTION` e `MONITOR`.
+Ogni valutazione viene pubblicata in `factory.agent-decisions`, comprese `NO_ACTION`,  `MONITOR` e `STOPPED_OBSERVATION`.
 
 ### 3. Separazione tra decisione ed esecuzione
 
-L'agente pubblica un comando, mentre il Machine Controller ne simula l'esecuzione.
+L'agente sceglie l'azione e pubblica un comando. Il Machine Controller valida ed esegue il comando e ne pubblica il risultato.
 
-### 4. Feedback osservabile
+Questa separazione evita che il componente decisionale applichi direttamente modifiche alla macchina.
 
-Il risultato ritorna all'agente e viene registrato in `factory.agent-feedback`.
+### 4. Feedback reattivo
 
-Queste caratteristiche trasformano una semplice pipeline di telemetria in un Agentic Data Plane.
+Il risultato ritorna all'agente tramite `factory.agent-feedback`.
 
+Se il comando riesce, l'agente pubblica:
+
+```text
+feedback_status = COMPLETED
+```
+
+Se il comando fallisce, l'agente può pubblicare:
+
+```text
+feedback_status = RECOVERY_SCHEDULED
+```
+
+Il fallimento genera quindi una nuova decisione `RECOVERY` e un nuovo comando.
+
+
+### 5. Stato effettivo della macchina
+
+Dopo un comando riuscito, il controller pubblica il nuovo stato in `factory.machine-state`.
+
+Esempi:
+
+```text
+REDUCE_SPEED riuscito
+→ velocità risultante ridotta
+→ stato RUNNING
+
+REQUEST_INSPECTION riuscito
+→ velocità invariata
+→ stato INSPECTION_REQUIRED
+
+EMERGENCY_STOP riuscito
+→ velocità risultante 0
+→ stato STOPPED
+```
+
+La nuova telemetria non riparte quindi sempre dai valori iniziali, ma riflette l'ultimo intervento riuscito.
 ---
 
 ## Riferimenti
