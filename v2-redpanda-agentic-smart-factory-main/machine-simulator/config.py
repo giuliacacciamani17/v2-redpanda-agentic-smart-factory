@@ -21,6 +21,7 @@ MACHINE_ID = os.getenv(
     "machine-01",
 )
 
+#secondi di attesa tra un evento telemetrico e l'altro
 EVENT_INTERVAL_SECONDS = float(
     os.getenv(
         "EVENT_INTERVAL_SECONDS",
@@ -28,6 +29,7 @@ EVENT_INTERVAL_SECONDS = float(
     )
 )
 
+#quanti secondi si cerca l’ultimo stato della macchina
 STATE_READ_TIMEOUT_SECONDS = float(
     os.getenv(
         "STATE_READ_TIMEOUT_SECONDS",

@@ -26,7 +26,7 @@ from config import (
     validate_configuration,
 )
 
-
+#sequenza standard di degrado progressivo
 EVENT_PROFILES = (
     {
         "phase": "NORMAL",
@@ -65,7 +65,7 @@ EVENT_PROFILES = (
     },
 )
 
-
+#sequenza standard di degrado progressivo
 STOPPED_PROFILES = (
     {
         "phase": "COOLING",
@@ -104,7 +104,7 @@ STOPPED_PROFILES = (
     },
 )
 
-
+#comportamento della macchina dopo un comando di riduzione velocità
 REDUCED_SPEED_PROFILES = (
     {
         "phase": "RECOVERY",
@@ -143,7 +143,7 @@ REDUCED_SPEED_PROFILES = (
     },
 )
 
-
+#scenario in cui la macchina necessita di un'ispezione
 INSPECTION_PROFILES = (
     {
         "phase": "INSPECTION_PENDING",
