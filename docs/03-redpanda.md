@@ -613,7 +613,7 @@ docker exec redpanda rpk topic list
 Redpanda Console è l'interfaccia grafica accessibile da:
 
 ```text
-http://localhost:8080
+http://localhost:8081
 ```
 
 È fondamentale per osservare:
