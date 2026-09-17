@@ -1,6 +1,8 @@
 # Agenti software
 
 
+
+
 > **Idea chiave:** un agente non si limita a trasferire dati. Osserva un ambiente, mantiene uno stato, applica una politica decisionale, produce azioni e usa il risultato delle azioni come feedback per l'adattamento.
 
 ---
