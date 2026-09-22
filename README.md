@@ -70,7 +70,7 @@ Il sistema sarà composto da:
    REDUCE_SPEED
    → REQUEST_INSPECTION
    → EMERGENCY_STOP
-```
+    ```
 
 ## Tecnologie
 
