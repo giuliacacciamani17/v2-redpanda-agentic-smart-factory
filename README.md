@@ -43,87 +43,34 @@ Il sistema sarà composto da:
 
 ## Flusso principale
 
-1. Il Machine Simulator legge l'ultimo stato disponibile della macchina e produce un blocco di eventi di telemetria coerente con tale stato.
+1. Il Machine Simulator legge l'ultimo stato della macchina e pubblica cinque eventi in `factory.telemetry`.
 
-2. Gli eventi vengono pubblicati nel topic `factory.telemetry`.
+2. Il Maintenance Agent elabora la telemetria, aggiorna la memoria, calcola il rischio e pubblica la decisione in `factory.agent-decisions`.
 
-3. Redpanda conserva gli eventi e li rende disponibili al Maintenance Agent.
+3. Le decisioni `NO_ACTION`, `MONITOR` e `STOPPED_OBSERVATION` non producono comandi.
 
-4. Il Maintenance Agent consuma la telemetria, aggiorna il proprio stato interno e calcola il livello di rischio.
+4. Le azioni `REDUCE_SPEED`, `REQUEST_INSPECTION` ed `EMERGENCY_STOP` vengono pubblicate in `factory.commands`.
 
-5. L'agente sceglie un'azione e pubblica la decisione nel topic `factory.agent-decisions`.
+5. Il Machine Controller esegue il comando e pubblica l'esito in `factory.command-results`.
 
-6. Se la decisione è `NO_ACTION`, `MONITOR` oppure `STOPPED_OBSERVATION`, non viene prodotto alcun comando operativo.
+6. Se il comando riesce:
 
-7. Se la decisione è `REDUCE_SPEED`, `REQUEST_INSPECTION` oppure `EMERGENCY_STOP`, l'agente pubblica un comando nel topic `factory.commands`.
+   - l'agente pubblica un feedback `COMPLETED`;
+   - il controller aggiorna `factory.machine-state`.
 
-8. Il Machine Controller consuma il comando, prova a eseguirlo e pubblica l'esito nel topic `factory.command-results`.
+7. Se il comando fallisce:
 
-9. Se il comando viene eseguito con successo:
+   - l'agente pubblica un feedback `RECOVERY_SCHEDULED`;
+   - genera una decisione `RECOVERY`;
+   - pubblica un nuovo comando.
 
-   - il controller pubblica il nuovo stato effettivo della macchina nel topic `factory.machine-state`;
-   - il Maintenance Agent aggiorna il proprio stato interno;
-   - l'agente pubblica un feedback con stato `COMPLETED` nel topic `factory.agent-feedback`;
-   - il ciclo operativo relativo al comando termina.
+8. La politica di recupero applica questa escalation:
 
-10. Se il comando fallisce:
-
-    - la velocità e lo stato della macchina rimangono invariati;
-    - il Maintenance Agent registra il fallimento;
-    - l'agente pubblica un feedback con stato `RECOVERY_SCHEDULED`;
-    - l'agente seleziona una nuova azione mediante la politica di recupero;
-    - viene pubblicata una nuova decisione con `decision_type = RECOVERY`;
-    - viene pubblicato un nuovo comando nel topic `factory.commands`.
-
-11. La politica di recupero applica la seguente escalation:
-
-    ```text
-    REDUCE_SPEED fallisce
-    → REQUEST_INSPECTION
-
-    REQUEST_INSPECTION fallisce
-    → EMERGENCY_STOP
-
-    EMERGENCY_STOP fallisce
-    → nuovo tentativo di EMERGENCY_STOP
-    ```
-
-12. Se viene superato il numero massimo di tentativi automatici, l'agente pubblica un feedback con stato `MANUAL_INTERVENTION_REQUIRED` e non genera ulteriori comandi.
-
-13. Il Machine Simulator utilizza l'ultimo evento presente in `factory.machine-state` per determinare lo scenario del blocco successivo:
-
-    ```text
-    Nessuno stato precedente
-    → PROGRESSIVE_DEGRADATION
-
-    Ultima azione REDUCE_SPEED
-    → RECOVERY_AFTER_SPEED_REDUCTION
-
-    Stato INSPECTION_REQUIRED
-    → INSPECTION_PENDING
-
-    Stato STOPPED
-    → STOPPED_COOLING
-    ```
-
-14. Tutti gli eventi appartenenti allo stesso ciclo decisionale mantengono lo stesso `correlation_id`, permettendo di collegare telemetria, decisioni, comandi, risultati, feedback e stato macchina.
-
-## Tracciabilità
-
-Gli identificatori principali sono:
-
-```text
-event_id       → telemetria
-decision_id    → decisione
-command_id     → comando
-result_id      → risultato
-feedback_id    → feedback
-state_event_id → stato macchina
-correlation_id → intero ciclo originato da una telemetria
+   ```text
+   REDUCE_SPEED
+   → REQUEST_INSPECTION
+   → EMERGENCY_STOP
 ```
-
-Le decisioni di recupero mantengono lo stesso `correlation_id` del comando fallito, ma generano nuovi `decision_id` e `command_id`.
-
 
 ## Tecnologie
 
