@@ -154,7 +154,7 @@ flowchart TD
 ```
 
 
-l `Machine Simulator` non conosce il codice del `Maintenance Agent`. Conosce soltanto il broker e i topic necessari:
+Il `Machine Simulator` non conosce il codice del `Maintenance Agent`. Conosce soltanto il broker e i topic necessari:
 
 ```text
 broker = redpanda:9092
@@ -162,10 +162,10 @@ telemetry topic = factory.telemetry
 machine state topic = factory.machine-state
 ```
 
+
 Allo stesso modo, il `Maintenance Agent` non chiama direttamente il `Machine Controller`, ma pubblica un evento in `factory.commands`, che il controller legge in modo indipendente.
-
-
 Il `Machine Controller` non modifica direttamente il simulatore. Dopo un comando riuscito pubblica il nuovo stato in `factory.machine-state`, che verrà letto dal simulator all'avvio del blocco successivo.
+
 ---
 
 ## I topic del progetto
@@ -433,9 +433,9 @@ I parametri principali sono:
 
 **1. Topic**: Indica dove deve essere salvato l'evento.
 
-**2.Key**: Identifica la macchina e influenza la scelta della partizione.
+**2. Key**: Identifica la macchina e influenza la scelta della partizione.
 
-**3.Value**: Contiene il messaggio JSON.
+**3. Value**: Contiene il messaggio JSON.
 
 **4. Callback**: Comunica se Redpanda ha accettato il record.
 
@@ -583,30 +583,7 @@ command:
   - dev-container
 ```
 
-<!--
----
 
-## rpk e Redpanda Console
-
-### rpk
-
-`rpk` è lo strumento a riga di comando di Redpanda.
-
-Nel progetto è stato usato per:
-
-- creare ed eliminare topic;
-- elencare i topic;
-- consumare record di prova;
-- descrivere consumer group;
-- controllare offset e lag;
-- verificare la salute del broker.
-
-Esempio:
-
-```bash
-docker exec redpanda rpk topic list
-```
--->
 ---
 ## Redpanda Console
 
@@ -662,10 +639,7 @@ nuovo factory.command-results
         ↓
 nuovo factory.agent-feedback
 
-Quando un comando ha esito positivo, lo stesso identificatore viene riportato anche in:
-
-```text
-factory.machine-state
+Quando un comando ha esito positivo, lo stesso identificatore viene riportato anche in factory.machine-state
 ```
 
 ---
