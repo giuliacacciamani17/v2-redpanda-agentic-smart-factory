@@ -1,4 +1,4 @@
-# Agentic Data Plane nella Smart Factory
+# Agentic Data Plane
 
 ## Che cos'è un Data Plane
 
@@ -79,7 +79,7 @@ L'utilizzo di un Data Plane offre numerosi vantaggi.
 
 - **Separazione delle responsabilità**: distingue la configurazione del sistema dalle operazioni eseguite sui dati , infatti il Control Plane decide, mentre il Data Plane esegue.
 
-- **Maggiore efficienza**: pla movimentazione dei dati può essere ottimizzata indipendentemente dalla logica applicativa.
+- **Maggiore efficienza**: la movimentazione dei dati può essere ottimizzata indipendentemente dalla logica applicativa.
 
 - **Scalabilità**: permette di gestire grandi volumi di traffico senza aumentare eccessivamente la complessità del sistema. 
 
@@ -331,7 +331,7 @@ EMERGENCY_STOP riuscito
 → stato STOPPED
 ```
 
-La nuova telemetria non riparte quindi sempre dai valori iniziali, ma riflette l'ultimo intervento riuscito.
+
 ---
 
 ## Riferimenti
