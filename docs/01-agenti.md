@@ -40,7 +40,7 @@ GitHub visualizza i diagrammi Mermaid direttamente nei file Markdown, quindi il 
 
 Gli agenti possono essere classificati in base al modo in cui **prendono decisioni** e **gestiscono l'interazione con l'ambiente**.
 
-###1. Agenti reattivi
+### 1.Agenti reattivi
 
 Rappresentano la forma più semplice di agente. Non mantengono una rappresentazione complessa dello stato del mondo e rispondono direttamente agli stimoli ricevuti.
 
@@ -311,8 +311,8 @@ I campi `source_state_event_id` e `source_state_correlation_id` collegano la nuo
 
 Il Maintenance Agent consuma due categorie di eventi:
 
-- gli eventi di `factory.telemetry`, che rappresentano la percezione dello stato della macchina;
-- gli eventi di `factory.command-results`, che rappresentano l'esito delle azioni precedentemente richieste.
+- gli eventi di `factory.telemetry`, che rappresentano la le informazioni simulate provenienti dalla macchina;
+- gli eventi di `factory.command-results`, che rappresentano l'esito delle azioni eseguite dal controller sulla macchina.
 
 ```python
 consumer.subscribe(
