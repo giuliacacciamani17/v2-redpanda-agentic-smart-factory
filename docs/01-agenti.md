@@ -271,7 +271,7 @@ Un agente introduce invece ulteriori capacità:
 
 ### Percezione
 
-E` il momento in cui l’agente acquisisce informazioni sull’ambiente prima di aggiornare la memoria, calcolare il rischio e prendere una decisione. 
+E` il momento in cui **l’agente acquisisce informazioni sull’ambiente prima di aggiornare la memoria**, calcolare il rischio e prendere una decisione. 
 
 Nel progetto, il `Machine Simulator` pubblica misurazioni strutturate come:
 
@@ -285,29 +285,7 @@ Nel progetto, il `Machine Simulator` pubblica misurazioni strutturate come:
 
 Questi dati vengono inseriti in un messaggio JSON e pubblicati sul topic `factory.telemetry`.
 
-Nel progetto un evento di telemetria ha una struttura simile alla seguente:
 
-```json
-{
-  "event_id": "uuid-evento",
-  "correlation_id": "abc-125",
-  "machine_id": "machine-01",
-  "timestamp": "2026-09-13T18:30:00+00:00",
-  "sequence_number": 3,
-  "temperature": 93.94,
-  "vibration": 6.82,
-  "speed": 1450,
-  "energy_consumption": 128.0,
-  "phase": "DEGRADING",
-  "status": "RUNNING",
-  "simulation_mode": "STATE_AWARE_CONTROLLED_RANDOM",
-  "simulation_scenario": "PROGRESSIVE_DEGRADATION",
-  "source_state_event_id": null,
-  "source_state_correlation_id": null
-}
-```
-
-I campi `source_state_event_id` e `source_state_correlation_id` collegano la nuova telemetria all'ultimo stato della macchina, quando disponibile. Questa relazione permette al simulatore di generare un nuovo blocco coerente con l'ultima azione applicata dal controller.
 
 Il Maintenance Agent consuma due categorie di eventi:
 
