@@ -146,20 +146,15 @@ http://localhost:8081
 
 ## Generazione di un blocco di eventi
 
-Ogni esecuzione genera cinque eventi e poi termina.
+Ogni esecuzione genera cinque eventi e poi termina. 
 
-### Da WSL o Bash
-
-```bash
-cd "/mnt/c/Users/giuli/OneDrive/Desktop/UNIMORE/anno2/semestre2/Distributed Edge Programming/v2-redpanda-agentic-smart-factory-main"
-chmod +x scripts/run-simulation.sh
-./scripts/run-simulation.sh
-```
+Raggiungere la root del progetto tramite wsl:
+ 
 
 ### Direttamente da PowerShell tramite WSL
 
 ```powershell
-wsl bash -lc 'cd "/mnt/c/Users/giuli/OneDrive/Desktop/UNIMORE/anno2/semestre2/Distributed Edge Programming/v2-redpanda-agentic-smart-factory-main" && chmod +x scripts/run-simulation.sh && ./scripts/run-simulation.sh'
+./scripts/run-simulation.sh
 ```
 
 Lo script:
