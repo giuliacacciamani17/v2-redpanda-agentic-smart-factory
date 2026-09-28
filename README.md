@@ -157,6 +157,7 @@ Raggiungere la root del progetto tramite wsl:
 ./scripts/run-simulation.sh
 ```
 
+
 Lo script:
 
 1. legge `.next-correlation-id`;
