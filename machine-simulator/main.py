@@ -65,7 +65,7 @@ EVENT_PROFILES = (
     },
 )
 
-#sequenza standard di degrado progressivo
+#sequenza standard dello stato della macchina
 STOPPED_PROFILES = (
     {
         "phase": "COOLING",
