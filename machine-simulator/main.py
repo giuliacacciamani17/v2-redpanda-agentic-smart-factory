@@ -26,7 +26,7 @@ from config import (
     validate_configuration,
 )
 
-#sequenza standard di degrado progressivo
+#sequenza di degrado seguita quando non esiste ancora uno stato precedente della macchina
 EVENT_PROFILES = (
     {
         "phase": "NORMAL",
@@ -65,7 +65,7 @@ EVENT_PROFILES = (
     },
 )
 
-#sequenza standard dello stato della macchina 
+#usato dopo che viene rilevata la fase STOPPED, simula una macchina che si sta raffreddadndo dopo l'arresto
 STOPPED_PROFILES = (
     {
         "phase": "COOLING",
@@ -104,7 +104,7 @@ STOPPED_PROFILES = (
     },
 )
 
-#comportamento della macchina dopo un comando di riduzione velocità
+#simula il comportamento della macchina dopo un comando di riduzione velocità
 REDUCED_SPEED_PROFILES = (
     {
         "phase": "RECOVERY",
