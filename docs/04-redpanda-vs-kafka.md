@@ -149,6 +149,8 @@ Redpanda e Kafka condividono il modello fondamentale dell'event streaming.
 **7. Offeset**: Redpanda e Kafka assegnano a ogni record un offset all'interno della partizione, rappresentando la posizione del record nella partizione.
 
 **8. Consumer Group**: entrambe le piattaforme supportano i consumer group, che consentono alle istanze della stessa applicazione di coordinarsi e dividersi le partizioni.
+
+
 ---
 # Quando utilizzare Kafka
 
