@@ -1,6 +1,6 @@
 # Redpanda e Apache Kafka a confronto
 
-Redpanda e Apache Kafka sono piattaforme di **event streaming distribuito** in grado di gestire flussi di eventi in tempo reale e svolgere il ruolo di infrastruttura per la comunicazione asincrona tra applicazioni, microservizi e sistemi distribuiti.
+Redpanda e Apache Kafka sono piattaforme di **event streaming distribuito** in grado di gestire flussi di eventi in tempo reale e svolgere il ruolo di **infrastruttura per la comunicazione asincrona** tra applicazioni, microservizi e sistemi distribuiti.
 
 > **Idea chiave**: Redpanda è **compatibile con il protocollo Kafka**, punta a offrire un'esperienza operativa semplificata, mantenendo il modello basato su producer, topic, partizioni, consumer e consumer group  e migliorando le prestazioni. 
 
