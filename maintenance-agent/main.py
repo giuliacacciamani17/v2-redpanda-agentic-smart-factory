@@ -285,7 +285,7 @@ def create_recovery_decision_event(
         ),
     }
 
-
+#crea gli eventi necessari al controller
 def create_command_event(
     decision: dict[str, Any],
     state: MachineState,
@@ -422,7 +422,11 @@ def select_contextual_action(
         return STOPPED_OBSERVATION
 
     return select_action(risk_score)
-    
+
+
+
+#flusso principale di elaborazione della telemetria.
+#preleva info della macchina dalla telemetria, calcola rischio, seleziona azione, genera decisione, pubblica eventuali comandi
 def process_telemetry(
     telemetry: dict[str, Any],
     producer: Producer,
@@ -600,7 +604,7 @@ def create_feedback_event(
         "message": message,
     }
 
-
+#gestisce l'intero flusso di recovery. 
 def process_failed_command(
     command_result: dict[str, Any],
     state: MachineState,
@@ -655,7 +659,7 @@ def process_failed_command(
         flush=True,
     )
 
-
+#elabora i comandi fatti dal controller, prendendoli dal topic factory.command-results
 def process_command_result(
     command_result: dict[str, Any],
     producer: Producer,
@@ -721,7 +725,7 @@ def process_command_result(
             recovery_attempt=recovery_attempt,
         )
 
-
+#gestisce i messaggi in base al topic da cui li ha ricevuti
 def process_message(
     topic: str,
     message_value: bytes,

@@ -45,7 +45,7 @@ def select_recovery_action(
 
     return recovery_actions.get(failed_action)
 
-
+#azioni che richiedono l'intervento del controller
 def requires_command(action: str) -> bool:
     return action in {
         REDUCE_SPEED,

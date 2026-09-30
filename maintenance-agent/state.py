@@ -82,6 +82,8 @@ class MachineState:
         self.last_command_id = command_id
         self.last_decision_id = decision_id
 
+
+    #aggiorna velocità, stato macchina e rimuove comandi in attesa
     def update_command_result(
         self,
         command_result: dict[str, Any],
