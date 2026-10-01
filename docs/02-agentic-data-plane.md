@@ -49,7 +49,7 @@ Trasporta e rende disponibili gli eventi prodotti durante il funzionamento.
 
 Il file `compose.yaml` appartiene principalmente alla configurazione del sistema, mentre le comunicazioni che attraversano i topic Redpanda costituiscono invece il Data Plane operativo.
 
-Un esempio di configurazione può essere:
+Altri esempi di configurazione sono riportati nei file `config.py` di ogni infrastruttura:
 
 ```yaml
 STATE_WINDOW_SIZE: "5"
