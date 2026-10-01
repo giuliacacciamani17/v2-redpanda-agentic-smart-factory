@@ -14,7 +14,7 @@ Il suo funzionamento generale può essere rappresentato così:
 flowchart TD
     A["Generazione del dato"]
     B["Canale di comunicazione"]
-    C["Trasporto/conservazione del dato"]
+    C["Trasporto e conservazione<br/>del dato"]
     D["Lettura del dato"]
     E["Elaborazione"]
 
@@ -146,13 +146,12 @@ Un Agentic Data Plane introduce funzionalità aggiuntive rispetto a un Data Plan
 | Trasporta ed elabora dati | Coordina dati, strumenti e agenti AI. |
 | Lavora principalmente su flussi di dati | Lavora su flussi decisionali e operativi. |
 | Segue istruzioni del Control Plane | Supporta agenti autonomi che prendono decisioni sulla base del contesto. |
-| Gestisce il traffico dati | Gestisce dati, strumenti, permessi e azioni degli agenti. |
 
 
 
 ## L'Agentic Data Plane realizzato nel progetto
 
-Nel progetto, il Data Plane è formato da:
+Nel progetto, l' Agentic Data Plane è formato da:
 
 - Redpanda come broker centrale;
 - i topic applicativi;
@@ -167,7 +166,7 @@ Nel progetto, il Data Plane è formato da:
 
 Redpanda è quindi il **broker di event streaming che costituisce il cuore infrastrutturale del Data Plane**, ma non coincide da solo con l'intero Data Plane.
 
-Il Data Plane completo comprende anche i componenti che producono, consumano e trasformano gli eventi:
+L' Agentic Data Plane completo comprende anche i componenti che producono, consumano e trasformano gli eventi:
 
 - `Machine Simulator`;
 - `Maintenance Agent`;
@@ -195,8 +194,8 @@ flowchart TD
     MC -->|Esito tecnico| R
     R -->|Risultato del comando| A
     A -->|Interpretazione e strategia| F
-    MC -->|Stato dopo un comando riuscito| MS
-    MS -->|Stato iniziale del blocco successivo| S
+    MC -->|Stato con comando riuscito| MS
+    MS -->|Stato per blocco successivo| S
 
     F -. Recupero richiesto .-> A
     A -. Nuova decisione RECOVERY .-> D
