@@ -11,17 +11,9 @@ In un sistema distribuito, il Data Plane gestisce il **flusso concreto delle inf
 Il suo funzionamento generale può essere rappresentato così:
 
 ```mermaid
-flowchart TD
-    A["Generazione del dato"]
-    B["Canale di comunicazione"]
-    C["Trasporto e conservazione<br/>del dato"]
-    D["Lettura del dato"]
-    E["Elaborazione"]
-
-    A --> B
-    B --> C
-    C --> D
-    D --> E
+flowchart LR
+    A[Riceve i dati] --> B[Trasporta / Elabora]
+    B --> C[Inoltra i dati]
 ```
 
 
@@ -104,26 +96,30 @@ Per questi motivi il Data Plane è ancora un'area attiva di ricerca e sviluppo.
 ---
 
 ## Che cos'è un Agentic Data Plane
-
-Un **Agentic Data Plane** è un'evoluzione del Data Plane progettato per sostenere il ciclo operativo di uno o più **agenti software**.
+Un **Agentic Data Plane** introduce all'interno del flusso dei dati uno o più **agenti** capaci di **analizzare il contesto, mantenere uno stato, prendere decisioni e produrre azioni**.
 
 L'idea fondamentale è che **non basta più movimentare i dati**. È necessario rendere disponibili agli agenti informazioni contestualizzate, risultati delle azioni e strumenti attraverso cui intervenire sull'ambiente.  
 
-In pratica, un Agentic Data Plane diventa l'infrastruttura che collega:
+Quindi non si ha più solamente:
 
-- agenti AI;
+```mermaid
+flowchart LR
+A[DATO] --> B[Regola]
+B --> C[Azione]
+```
 
-- modelli di machine learning o modelli linguistici (LLM);
+Ma si ha qualcosa del tipo:
+```mermaid
+flowchart TD
+    A[DATO] --> B[Analisi]
+    B --> C[Contesto + Stato]
+    C --> D["Decisione dell'agente"]
+    D --> E[Azione]
+    E --> F[Feedback]
+```
 
-- basi di dati;
+> Il principale valore aggiunto dell'Agentic Data Plane è la **capacità decisionale inserita direttamente nel percorso operativo dei dati**. 
 
-- applicazioni aziendali;
-
-- strumenti esterni;
-
-- sistemi di monitoraggio e governance.
-
-Nel progetto non viene utilizzato un LLM. Il Maintenance Agent è deterministico e basato su stato, calcolo del rischio, regole decisionali e feedback del controller.
 
 ## Come funziona un Agentic Data Plane
 
