@@ -110,7 +110,7 @@ B --> C[Azione]
 
 Ma si ha qualcosa del tipo:
 ```mermaid
-flowchart TD
+flowchart LR
     A[DATO] --> B[Analisi]
     B --> C[Contesto + Stato]
     C --> D["Decisione dell'agente"]
