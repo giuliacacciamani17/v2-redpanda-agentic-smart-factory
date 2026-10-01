@@ -230,7 +230,6 @@ Può essere composto da:
 ```text
 Data Plane
 ├── Broker
-├── API
 ├── Database
 ├── Event Stream
 ├── Pipeline
@@ -242,7 +241,7 @@ Data Plane
 >
 > Broker = Strumento 
 >
-> Data Plane = architettura
+> Data Plane = Architettura
 
 ---
 ## Comunicazione asincrona
