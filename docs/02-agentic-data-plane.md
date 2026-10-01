@@ -2,9 +2,9 @@
 
 ## Che cos'è un Data Plane
 
-> Un **Data Plane** è l'insieme dei componenti e dei meccanismi che permettono ai dati operativi di **attraversare un sistema durante la sua esecuzione**.
+> Un **Data Plane** è l'insieme dei componenti e dei meccanismi che permettono ai** dati operativi di** **attraversare un sistema durante la sua esecuzione**.
 
-Viene spesso chiamato anche **Forwarding Plane** perché si occupa di instradare e movimentare le informazioni da una sorgente a una destinazione.
+Viene spesso chiamato anche **Forwarding Plane** perché si occupa di **instradare e movimentare le informazioni** da una sorgente a una destinazione.
 
 In un sistema distribuito, il Data Plane gestisce il **flusso concreto delle informazioni tra i diversi servizi**. Non stabilisce necessariamente le regole del sistema, ma permette ai dati di raggiungere tutti i componenti che devono elaborarli.
 
@@ -14,8 +14,8 @@ Il suo funzionamento generale può essere rappresentato così:
 flowchart TD
     A["Generazione del dato"]
     B["Canale di comunicazione"]
-    C["Trasporto e conservazione del dato"]
-    D["Componente che legge il dato"]
+    C["Trasporto/conservazione del dato"]
+    D["Lettura del dato"]
     E["Elaborazione"]
 
     A --> B
