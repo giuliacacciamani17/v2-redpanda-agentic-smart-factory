@@ -26,7 +26,6 @@ flowchart LR
     P --> H[Consumer]
 ```
 
-## Differenze principali
 
 ## Differenze principali
 
@@ -90,7 +89,9 @@ In modalità KRaft, alcuni nodi Kafka assumono il ruolo di `controller` e partec
 
 Redpanda invece utilizza una propria architettura basata su **Raft**.
 
-Raft è un algoritmo di consenso che permette a più nodi di concordare sullo stesso stato. Un nodo opera come leader, mentre gli altri partecipanti replicano le informazioni. Una modifica viene considerata confermata quando raggiunge il consenso richiesto dal gruppo. Redpanda utilizza quindi Raft non soltanto per i **metadati**, ma anche per la **replica dei dati** applicativi contenuti nelle partizioni.
+Raft è un algoritmo di consenso che permette a più nodi di concordare sullo stesso stato. Un nodo opera come leader, mentre gli altri partecipanti replicano le informazioni. Una modifica viene considerata confermata quando raggiunge il consenso richiesto dal gruppo. 
+
+Redpanda utilizza quindi Raft non soltanto per i **metadati**, ma anche sul **piano dati** a differenza di KRaft che si limita al piano di controllo.
 
 
 
@@ -211,7 +212,9 @@ producer.produce(
 
 Questa compatibilità favorisce la **portabilità** del codice applicativo.
 
-Redpanda e Kafka non sono identici, ma gran parte del codice Python potrebbe essere riutilizzata passando da una piattaforma all'altra.  Le differenze più rilevanti riguarderebbero la configurazione e la gestione dell'infrastruttura.
+Redpanda e Kafka non sono identici, ma gran parte del codice Python potrebbe essere riutilizzata passando da una piattaforma all'altra.  
+
+**Le differenze più rilevanti riguarderebbero la configurazione e la gestione dell'infrastruttura.**
 
 ---
 
