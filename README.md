@@ -153,9 +153,18 @@ Raggiungere la root del progetto tramite wsl:
 
 ### Direttamente da PowerShell tramite WSL
 
+*N.B. Per avere un `correlation_id` degli eventi che parta da "abc-123" conviene eliminare manualmente il `.next-correlation-id` prima di avviare la simulazione del primo blocco, usando il seguente comando:* 
+
+```powershell
+rm -f .next-correlation-id
+```
+
+Comando per avviare la simulazione del primo blocco di eventi:
+
 ```powershell
 ./scripts/run-simulation.sh
 ```
+
 
 
 Lo script:
