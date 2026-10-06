@@ -146,6 +146,7 @@ http://localhost:8081
 
 ## Generazione di un blocco di eventi
 
+
 Ogni esecuzione genera cinque eventi e poi termina. 
 
 Raggiungere la root del progetto tramite wsl:
